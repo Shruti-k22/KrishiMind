@@ -328,7 +328,7 @@ class _PreviewRow extends StatelessWidget {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: crops.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 11),
+        separatorBuilder: (_, _) => const SizedBox(width: 11),
         itemBuilder: (context, i) {
           final name = lang == 'en' ? crops[i][0] : crops[i][1];
           return Container(

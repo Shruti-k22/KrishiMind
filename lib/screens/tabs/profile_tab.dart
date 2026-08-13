@@ -236,30 +236,24 @@ class _ProfileTabState extends State<ProfileTab> {
   }
 }
 
+/// One read-only line: icon, label, value.
+///
+/// It used to accept an optional onTap and show a chevron. Both were removed
+/// once language and district became changeable from the dashboard instead —
+/// a tappable-looking row that does nothing is worse than a plain one.
 class _Row extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
-  final VoidCallback? onTap;
 
-  const _Row({
-    required this.icon,
-    required this.label,
-    required this.value,
-    this.onTap,
-  });
+  const _Row({required this.icon, required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
+    return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
+        color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFFE6EDE7), width: 1.3),
       ),
@@ -286,17 +280,7 @@ class _Row extends StatelessWidget {
               color: AppColors.primary,
             ),
           ),
-          if (onTap != null) ...[
-            const SizedBox(width: 6),
-            const Icon(
-              Icons.chevron_right_rounded,
-              size: 19,
-              color: Color(0xFFA8B3AB),
-            ),
-          ],
         ],
-      ),
-        ),
       ),
     );
   }

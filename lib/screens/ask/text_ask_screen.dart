@@ -81,7 +81,11 @@ class _TextAskScreenState extends State<TextAskScreen> {
       if (outcome.isOk) {
         _turns.add(ChatTurn.answer(outcome.advice));
       } else {
-        _turns.add(ChatTurn.failed(_messageFor(outcome.error!)));
+        // The technical detail is appended only while we are still getting this
+        // working. Remove the `+ detail` part before submission — a farmer must
+        // never see an HTTP code.
+        final detail = outcome.detail == null ? '' : '  [${outcome.detail}]';
+        _turns.add(ChatTurn.failed('${_messageFor(outcome.error!)}$detail'));
       }
     });
     _scrollToEnd();

@@ -17,20 +17,13 @@ class AuthService {
 
   static bool get isSignedIn => _auth.currentUser != null;
 
-  /// Does an account already exist for this email?
-  ///
-  /// Used to decide whether the next screen should say "create a password" or
-  /// "enter your password". Newer Firebase versions deliberately stop reporting
-  /// this to prevent strangers probing which emails are registered — so if it
-  /// isn't available we simply return null and the screen stays neutral.
-  static Future<bool?> accountExists(String email) async {
-    try {
-      final methods = await _auth.fetchSignInMethodsForEmail(email.trim());
-      return methods.isNotEmpty;
-    } catch (_) {
-      return null;
-    }
-  }
+  // There was an accountExists() method here, asking Firebase whether an email
+  // was already registered. It has been removed for two reasons. It was never
+  // called — signInOrCreate handles both cases in one action, so nothing needed
+  // to ask in advance. And Firebase has deprecated that lookup on purpose: being
+  // able to ask "is this email registered?" lets a stranger test a list of
+  // addresses and learn who uses the app. Not answering that question is the
+  // safer design.
 
   /// Signs in if the account exists, creates it if it doesn't.
   ///

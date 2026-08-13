@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../secrets.dart';
@@ -25,8 +26,17 @@ class GeminiService {
   GeminiService._();
 
   /// The free-tier model. Fast and cheap, which is what a chat needs.
-  /// If Google renames it later, this one line is the only thing to change.
-  static const String _model = 'gemini-2.5-flash';
+  ///
+  /// This one line is deliberately the only place a model name appears. We
+  /// started on `gemini-2.5-flash` and Google returned 404 with "no longer
+  /// available to new users" — retired models keep appearing in the model list,
+  /// so listing them is not proof you may use them. Changing this single
+  /// constant was the entire fix, which is the point of keeping it here.
+  ///
+  /// To check what your key can currently use, run in PowerShell:
+  ///   (Invoke-RestMethod -Uri "https://generativelanguage.googleapis.com/v1beta/models"
+  ///     -Headers @{"x-goog-api-key"=$k}).models | Select-Object -ExpandProperty name
+  static const String _model = 'gemini-3.5-flash';
 
   static const String _endpoint =
       'https://generativelanguage.googleapis.com/v1beta/models';
@@ -48,9 +58,10 @@ class GeminiService {
   }) async {
     if (!Secrets.hasGeminiKey) return GeminiOutcome.noKey();
 
-    final url = Uri.parse(
-      '$_endpoint/$_model:generateContent?key=${Secrets.geminiApiKey}',
-    );
+    // The key goes in a header, not in the URL. Google's newer keys (the ones
+    // starting "AQ.") expect this, and a key in a URL is a bad habit anyway —
+    // URLs end up in server logs, browser history and error reports.
+    final url = Uri.parse('$_endpoint/$_model:generateContent');
 
     final body = {
       'system_instruction': {
@@ -72,7 +83,10 @@ class GeminiService {
       final res = await http
           .post(
             url,
-            headers: const {'Content-Type': 'application/json'},
+            headers: {
+              'Content-Type': 'application/json',
+              'x-goog-api-key': Secrets.geminiApiKey,
+            },
             body: jsonEncode(body),
           )
           // Generous compared with the weather call, because the model genuinely
@@ -80,12 +94,22 @@ class GeminiService {
           // does not leave the farmer staring at dots forever.
           .timeout(const Duration(seconds: 30));
 
+      // Temporary while we get this working: print exactly what Google said.
+      // The farmer never sees this — it only appears in the flutter run
+      // terminal. Remove once the answers are reliable.
+      if (res.statusCode != 200) {
+        debugPrint('=== GEMINI FAILED: HTTP ${res.statusCode} ===');
+        debugPrint(res.body.length > 900 ? res.body.substring(0, 900) : res.body);
+      }
+
       if (res.statusCode == 429) return GeminiOutcome.quotaExhausted();
       if (res.statusCode == 400 || res.statusCode == 403) {
         // Almost always a bad or restricted key.
-        return GeminiOutcome.badKey();
+        return GeminiOutcome.badKey(detail: 'HTTP ${res.statusCode}');
       }
-      if (res.statusCode != 200) return GeminiOutcome.failed();
+      if (res.statusCode != 200) {
+        return GeminiOutcome.failed(detail: 'HTTP ${res.statusCode}');
+      }
 
       final decoded = jsonDecode(res.body) as Map<String, dynamic>;
 
@@ -105,10 +129,11 @@ class GeminiService {
       // The schema guarantees valid JSON, but never trust a network response.
       final parsed = jsonDecode(text) as Map<String, dynamic>;
       return GeminiOutcome.ok(Advice.fromJson(parsed));
-    } catch (_) {
+    } catch (e) {
       // No internet, timeout, or a response we could not read. All the same to
       // the farmer: it did not work, try again.
-      return GeminiOutcome.failed();
+      debugPrint('=== GEMINI THREW: $e ===');
+      return GeminiOutcome.failed(detail: e.runtimeType.toString());
     }
   }
 
@@ -273,16 +298,21 @@ class GeminiOutcome {
   final Advice? advice;
   final GeminiError? error;
 
-  const GeminiOutcome._(this.advice, this.error);
+  /// A short technical note — an HTTP code or an exception type. Shown on screen
+  /// only while we are still getting this working, so a failure can be diagnosed
+  /// without guessing. Delete the on-screen part before submission.
+  final String? detail;
+
+  const GeminiOutcome._(this.advice, this.error, [this.detail]);
 
   factory GeminiOutcome.ok(Advice a) => GeminiOutcome._(a, null);
   factory GeminiOutcome.noKey() => const GeminiOutcome._(null, GeminiError.noKey);
-  factory GeminiOutcome.badKey() =>
-      const GeminiOutcome._(null, GeminiError.badKey);
+  factory GeminiOutcome.badKey({String? detail}) =>
+      GeminiOutcome._(null, GeminiError.badKey, detail);
   factory GeminiOutcome.quotaExhausted() =>
       const GeminiOutcome._(null, GeminiError.quotaExhausted);
-  factory GeminiOutcome.failed() =>
-      const GeminiOutcome._(null, GeminiError.failed);
+  factory GeminiOutcome.failed({String? detail}) =>
+      GeminiOutcome._(null, GeminiError.failed, detail);
 
   bool get isOk => advice != null;
 }
