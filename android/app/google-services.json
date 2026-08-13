@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "669649439198",
+    "project_id": "krishimind-68432",
+    "storage_bucket": "krishimind-68432.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:669649439198:android:9255ee93b056c3b836b54f",
+        "android_client_info": {
+          "package_name": "com.krishimind.krishimind"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAxdpN-nQk9aGt6SmLO-JLM4RZr-iMoldw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
