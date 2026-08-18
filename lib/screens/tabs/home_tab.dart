@@ -1,27 +1,31 @@
 import 'package:flutter/material.dart';
 
 import '../../data/app_language.dart';
+import '../../data/app_prefs.dart';
 import '../../data/districts.dart';
 import '../../data/strings.dart';
 import '../../data/weather.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/ask_buttons.dart';
+import '../../widgets/crop_art.dart';
+import '../../widgets/grass_footer.dart';
 import '../../widgets/weather_card.dart';
-import '../../data/app_prefs.dart';
 import '../ask/text_ask_screen.dart';
 import '../district_screen.dart';
 import '../home_shell.dart';
 
 /// The dashboard.
 ///
-/// Order on screen, exactly as agreed with Shruti:
-///   1. greeting + district
-///   2. weather card (rounded rectangle, temperature, season, spraying advice)
-///   3. the three ways to ask — voice first and full width, photo and text below
-///   4. a small preview of common problems in their area
+/// Order on screen:
+///   1. greeting + district + language + emblem
+///   2. weather card — spraying advice is the most prominent line
+///   3. three-day forecast, because the useful question is about tomorrow
+///   4. the three ways to ask — voice full width, scan and type below
+///   5. the crops of this region, each with its own illustration
+///   6. a band of grass to close the page
 ///
-/// The full crop / season / disease library lives in the Guide tab, not here.
-/// Keeping this screen short is what stops it looking cluttered.
+/// The list is padded per-section rather than as a whole, so the grass can run
+/// edge to edge while everything above it stays inset.
 class HomeTab extends StatefulWidget {
   final AppLanguage language;
   final District district;
@@ -58,6 +62,9 @@ class _HomeTabState extends State<HomeTab> {
     });
   }
 
+  /// Horizontal inset used by everything except the grass.
+  static const _side = EdgeInsets.symmetric(horizontal: 18);
+
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
@@ -65,184 +72,168 @@ class _HomeTabState extends State<HomeTab> {
         ? widget.district.en
         : widget.district.mr;
 
+    // The grass is pinned to the bottom of the screen rather than being the last
+    // item in the list. As the last item it stopped wherever the content
+    // happened to stop, leaving white space between it and the navigation bar.
+    // Pinned, it always sits on the bottom edge — like a horizon.
     return SafeArea(
-      child: RefreshIndicator(
-        // Pull down to try the weather again — the natural gesture when a
-        // farmer regains signal.
-        color: AppColors.accent,
-        onRefresh: _loadWeather,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(18, 10, 18, 24),
-          children: [
+      bottom: false,
+      child: Column(
+        children: [
+          Expanded(
+            child: RefreshIndicator(
+              // Pull down to try the weather again — the natural gesture when a
+              // farmer regains signal.
+              color: AppColors.accent,
+              onRefresh: _loadWeather,
+              child: ListView(
+                padding: EdgeInsets.zero,
+                // Needed now that the content is short enough not to scroll:
+                // without it there is no overscroll, so pull-to-refresh would
+                // quietly stop working.
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
             // ---- Greeting + district ----
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        S.greeting(_lang, now.hour),
-                        style: const TextStyle(
-                          fontFamily: 'NotoSansDevanagari',
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      // Tappable: tapping your district is how you change it.
-                      // A back arrow would be wrong here — home is the first
-                      // screen, there is nothing behind it. You change a
-                      // setting by tapping the setting.
-                      InkWell(
-                        onTap: _changeDistrict,
-                        borderRadius: BorderRadius.circular(8),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 2),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.location_on_rounded,
-                                size: 14,
-                                color: AppColors.accent,
-                              ),
-                              const SizedBox(width: 3),
-                              Text(
-                                districtName,
-                                style: const TextStyle(
-                                  fontFamily: 'NotoSansDevanagari',
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF6F7C72),
-                                ),
-                              ),
-                              const SizedBox(width: 3),
-                              const Icon(
-                                Icons.expand_more_rounded,
-                                size: 15,
-                                color: Color(0xFF9BA69E),
-                              ),
-                            ],
+            Padding(
+              padding: _side.copyWith(top: 10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          S.greeting(_lang, now.hour),
+                          style: const TextStyle(
+                            fontFamily: 'NotoSansDevanagari',
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.primary,
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Quick language switch. A farmer may reach the dashboard and
-                // realise they would rather read English — making them dig into
-                // Profile for that is too slow.
-                _LanguageChip(
-                  current: widget.language,
-                  onPick: _changeLanguage,
-                ),
-                const SizedBox(width: 10),
-                Image.asset('assets/branding/emblem.png', height: 42),
-              ],
-            ),
-
-            const SizedBox(height: 16),
-
-            // ---- Weather ----
-            WeatherCard(
-              weather: _weather,
-              loading: _loading,
-              lang: _lang,
-              now: now,
-            ),
-
-            const SizedBox(height: 20),
-
-            // ---- The three ways to ask ----
-            AskButtons(
-              lang: _lang,
-              enabled: _isOnline,
-              onVoice: () => _notReadyYet('voice'),
-              onPhoto: () => _notReadyYet('image'),
-              onText: _openTextAsk,
-            ),
-
-            const SizedBox(height: 24),
-
-            // ---- Preview of the local library ----
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Flexible(
-                  child: Text(
-                    S.problemsInYourArea(_lang),
-                    style: const TextStyle(
-                      fontFamily: 'NotoSansDevanagari',
-                      fontSize: 15.5,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.primary,
+                        const SizedBox(height: 2),
+                        // Tappable: tapping your district is how you change it.
+                        // A back arrow would be wrong here — home is the first
+                        // screen, there is nothing behind it. You change a
+                        // setting by tapping the setting.
+                        InkWell(
+                          onTap: _changeDistrict,
+                          borderRadius: BorderRadius.circular(8),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.location_on_rounded,
+                                  size: 14,
+                                  color: AppColors.accent,
+                                ),
+                                const SizedBox(width: 3),
+                                Text(
+                                  districtName,
+                                  style: const TextStyle(
+                                    fontFamily: 'NotoSansDevanagari',
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF6F7C72),
+                                  ),
+                                ),
+                                const SizedBox(width: 3),
+                                const Icon(
+                                  Icons.expand_more_rounded,
+                                  size: 15,
+                                  color: Color(0xFF9BA69E),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-                Text(
-                  S.seeAll(_lang),
-                  style: const TextStyle(
-                    fontFamily: 'NotoSansDevanagari',
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.accent,
+                  _LanguageChip(
+                    current: widget.language,
+                    onPick: _changeLanguage,
                   ),
-                ),
-              ],
+                  const SizedBox(width: 10),
+                  Image.asset('assets/branding/emblem.png', height: 42),
+                ],
+              ),
             ),
 
             const SizedBox(height: 12),
 
-            _PreviewRow(lang: _lang, district: widget.district),
-
-            const SizedBox(height: 18),
-
-            // ---- Honest disclaimer ----
-            // Matters more here than in a houseplant app: wrong advice costs a
-            // farmer money.
-            Center(
-              child: Text(
-                S.aiDisclaimer(_lang),
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontFamily: 'NotoSansDevanagari',
-                  fontSize: 11,
-                  color: Color(0xFF9BA69E),
-                ),
+            // ---- Weather, with the three-day forecast inside it ----
+            Padding(
+              padding: _side,
+              child: WeatherCard(
+                weather: _weather,
+                loading: _loading,
+                lang: _lang,
+                now: now,
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
 
-  /// Opens the district list. When a new district is chosen it saves and
-  /// rebuilds the whole app frame with the new one, so the weather and the crop
-  /// list update straight away.
-  void _changeDistrict() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => DistrictScreen(language: widget.language)),
-    );
-  }
+            const SizedBox(height: 14),
 
-  /// Changes language immediately and stays on the dashboard.
-  ///
-  /// Deliberately does NOT walk back through the district screen — the farmer
-  /// already told us their district, and asking twice for something we know is
-  /// the kind of small rudeness that makes an app feel clumsy.
-  Future<void> _changeLanguage(AppLanguage picked) async {
-    if (picked.code == widget.language.code) return;
-    await AppPrefs.saveLanguage(picked.code);
-    if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (_) =>
-            HomeShell(language: picked, district: widget.district),
+            // ---- The three ways to ask ----
+            Padding(
+              padding: _side,
+              child: AskButtons(
+                lang: _lang,
+                enabled: _isOnline,
+                onVoice: () => _notReadyYet('voice'),
+                onPhoto: () => _notReadyYet('image'),
+                onText: _openTextAsk,
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // "This week on your farm" was here and Shruti removed it. The tips
+            // themselves are still in lib/data/farm_tips.dart — 15 of them, all
+            // three languages — so they can move into the Guide tab later
+            // without rewriting anything.
+
+            // ---- Crops of this region ----
+            Padding(
+              padding: _side,
+              child: _SectionHead(
+                title: S.problemsInYourArea(_lang),
+                action: S.seeAll(_lang),
+              ),
+            ),
+            const SizedBox(height: 9),
+            _CropRow(lang: _lang, district: widget.district),
+
+                  const SizedBox(height: 10),
+                ],
+              ),
+            ),
+          ),
+
+          // ---- Honest disclaimer ----
+          // Matters more here than in a houseplant app: wrong advice costs a
+          // farmer money. It sits with the grass rather than in the list, so the
+          // two always stay together at the bottom.
+          Padding(
+            padding: _side,
+            child: Text(
+              S.aiDisclaimer(_lang),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'NotoSansDevanagari',
+                fontSize: 11,
+                color: Color(0xFF9BA69E),
+              ),
+            ),
+          ),
+
+          // No gap here on purpose — the text sits directly on the grass, so the
+          // page closes in one movement.
+          const GrassFooter(),
+        ],
       ),
-      (route) => false,
     );
   }
 
@@ -259,6 +250,34 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
+  /// Opens the district list. When a new district is chosen it saves and
+  /// rebuilds the whole app frame with the new one, so the weather and the crop
+  /// list update straight away.
+  void _changeDistrict() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => DistrictScreen(language: widget.language),
+      ),
+    );
+  }
+
+  /// Changes language immediately and stays on the dashboard.
+  ///
+  /// Deliberately does NOT walk back through the district screen — the farmer
+  /// already told us their district, and asking twice for something we know is
+  /// the kind of small rudeness that makes an app feel clumsy.
+  Future<void> _changeLanguage(AppLanguage picked) async {
+    if (picked.code == widget.language.code) return;
+    await AppPrefs.saveLanguage(picked.code);
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (_) => HomeShell(language: picked, district: widget.district),
+      ),
+      (route) => false,
+    );
+  }
+
   void _notReadyYet(String which) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -270,16 +289,55 @@ class _HomeTabState extends State<HomeTab> {
   }
 }
 
-/// Temporary preview cards.
+/// A section title, with an optional action on the right.
+class _SectionHead extends StatelessWidget {
+  final String title;
+  final String? action;
+
+  const _SectionHead({required this.title, this.action});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Flexible(
+          child: Text(
+            title,
+            style: const TextStyle(
+              fontFamily: 'NotoSansDevanagari',
+              fontSize: 15.5,
+              fontWeight: FontWeight.w800,
+              color: AppColors.primary,
+            ),
+          ),
+        ),
+        if (action != null)
+          Text(
+            action!,
+            style: const TextStyle(
+              fontFamily: 'NotoSansDevanagari',
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+              color: AppColors.accent,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// The crops actually grown in this farmer's region, each with its own drawing.
 ///
-/// Real photographs and disease names arrive with the data step. For now these
-/// show the actual crops of the farmer's region, so the screen reads as real
-/// rather than empty.
-class _PreviewRow extends StatelessWidget {
+/// Real photographs and disease names arrive with the data step. What changed
+/// here is that every crop now has a distinct illustration — four copies of the
+/// same leaf icon was the single thing that made this row look unfinished.
+class _CropRow extends StatelessWidget {
   final String lang;
   final District district;
 
-  const _PreviewRow({required this.lang, required this.district});
+  const _CropRow({required this.lang, required this.district});
 
   static const Map<String, List<List<String>>> _cropsByRegion = {
     // region : [ [english, marathi], ... ]
@@ -324,41 +382,60 @@ class _PreviewRow extends StatelessWidget {
     final crops = _cropsByRegion[region] ?? const [];
 
     return SizedBox(
-      height: 104,
+      height: 90,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
+        // Padding on the list, not the tiles, so the first card lines up with
+        // the headings above and the last one can still scroll clear of the edge.
+        padding: const EdgeInsets.symmetric(horizontal: 18),
         itemCount: crops.length,
         separatorBuilder: (_, _) => const SizedBox(width: 11),
         itemBuilder: (context, i) {
           final name = lang == 'en' ? crops[i][0] : crops[i][1];
+          final kind = cropKindFor(crops[i][0]);
+
           return Container(
-            width: 96,
+            width: 104,
             decoration: BoxDecoration(
-              color: AppColors.tintedPanel,
-              borderRadius: BorderRadius.circular(15),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(color: const Color(0xFFDCE8DD)),
             ),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(
-                  Icons.eco_rounded,
-                  size: 28,
-                  color: AppColors.accent,
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(15),
+                  ),
+                  child: Container(
+                    height: 57,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: cropTint(kind),
+                      ),
+                    ),
+                    child: Center(child: CropArt(kind: kind, height: 52)),
+                  ),
                 ),
-                const SizedBox(height: 8),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  child: Text(
-                    name,
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontFamily: 'NotoSansDevanagari',
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.primary,
+                Expanded(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      child: Text(
+                        name,
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontFamily: 'NotoSansDevanagari',
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primary,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -371,7 +448,6 @@ class _PreviewRow extends StatelessWidget {
   }
 }
 
-
 /// The small language pill in the top-right of the dashboard.
 ///
 /// Shows the current language, and opens a sheet with the three options. Kept
@@ -383,7 +459,6 @@ class _LanguageChip extends StatelessWidget {
 
   const _LanguageChip({required this.current, required this.onPick});
 
-  /// Short label so the chip stays narrow: मरा / हिं / EN
   String get _short {
     switch (current.code) {
       case 'mr':

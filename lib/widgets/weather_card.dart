@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/strings.dart';
 import '../data/weather.dart';
 import '../theme/app_colors.dart';
+import 'forecast_row.dart';
 
 /// The rounded weather panel at the top of the dashboard.
 ///
@@ -72,7 +73,7 @@ class WeatherCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         gradient: const LinearGradient(
@@ -110,12 +111,12 @@ class WeatherCard extends StatelessWidget {
       children: [
         Row(
           children: [
-            Icon(_skyIcon(w.weatherCode), size: 34, color: AppColors.primary),
-            const SizedBox(width: 12),
+            Icon(_skyIcon(w.weatherCode), size: 30, color: AppColors.primary),
+            const SizedBox(width: 11),
             Text(
               '${w.temperatureC.round()}°',
               style: const TextStyle(
-                fontSize: 30,
+                fontSize: 27,
                 fontWeight: FontWeight.w800,
                 color: AppColors.primary,
                 height: 1.0,
@@ -141,14 +142,14 @@ class WeatherCard extends StatelessWidget {
           ],
         ),
 
-        const SizedBox(height: 13),
+        const SizedBox(height: 9),
         const Divider(height: 1, color: Color(0xFFD9E8DB)),
-        const SizedBox(height: 11),
+        const SizedBox(height: 8),
 
         // The line that actually helps him decide something today.
         Row(
           children: [
-            Icon(a.icon, size: 19, color: a.color),
+            Icon(a.icon, size: 18, color: a.color),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -163,6 +164,15 @@ class WeatherCard extends StatelessWidget {
             ),
           ],
         ),
+
+        // The forecast now lives inside this card rather than in its own box
+        // below it. One card instead of two saves a gap, a border and about
+        // 30 pixels of height — and it belongs here anyway, since it answers the
+        // same question the spraying line does: what should I do, and when.
+        if (w.days.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          ForecastRow(days: w.days, lang: lang),
+        ],
       ],
     );
   }

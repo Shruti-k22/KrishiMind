@@ -40,7 +40,7 @@ class AskButtons extends StatelessWidget {
         child: Column(
           children: [
             _VoiceButton(lang: lang, onTap: onVoice),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Row(
               children: [
                 Expanded(
@@ -82,7 +82,7 @@ class _VoiceButton extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(18),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
             gradient: const LinearGradient(
@@ -103,15 +103,15 @@ class _VoiceButton extends StatelessWidget {
               // Circular mic badge — recognisable at a glance, without the
               // button having to take over the whole screen.
               Container(
-                width: 46,
-                height: 46,
+                width: 41,
+                height: 41,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: Colors.white.withValues(alpha: 0.18),
                 ),
-                child: const Icon(Icons.mic_rounded, color: Colors.white, size: 25),
+                child: const Icon(Icons.mic_rounded, color: Colors.white, size: 23),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 13),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -165,7 +165,7 @@ class _SmallTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
         child: Container(
-          height: 92,
+          height: 78,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: const Color(0xFFE0E9E2), width: 1.3),
@@ -174,15 +174,15 @@ class _SmallTile extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 35,
+                height: 35,
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
                   color: AppColors.tintedPanel,
                 ),
-                child: Icon(icon, color: AppColors.accent, size: 21),
+                child: Icon(icon, color: AppColors.accent, size: 19),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               // The labels are longer than the old one-word ones, and Marathi
               // and Hindi are longer again. FittedBox shrinks the text a little
               // rather than wrapping or clipping it, so the tile still looks

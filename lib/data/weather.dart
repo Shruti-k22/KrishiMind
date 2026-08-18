@@ -9,17 +9,41 @@ import 'districts.dart';
 ///
 /// Uses Open-Meteo, which is free and needs no API key and no account. We send
 /// the district's coordinates — this is why we never needed GPS.
+/// One day in the short forecast.
+///
+/// Why the forecast matters more than today's temperature: a farmer is not
+/// curious about the weather, he is deciding when to spray, when to irrigate and
+/// when to harvest. Those are decisions about tomorrow and the day after.
+class DayForecast {
+  final DateTime date;
+  final double maxTempC;
+  final int rainChance; // %
+  final int weatherCode;
+
+  const DayForecast({
+    required this.date,
+    required this.maxTempC,
+    required this.rainChance,
+    required this.weatherCode,
+  });
+}
+
 class WeatherInfo {
   final double temperatureC;
   final int weatherCode; // Open-Meteo's code for clear / cloudy / rain etc.
   final double windKmh;
   final int maxRainChance; // highest chance of rain in the next 12 hours, %
 
+  /// Today plus the next three days. Empty if the service did not send them —
+  /// the row simply does not appear, rather than the screen breaking.
+  final List<DayForecast> days;
+
   const WeatherInfo({
     required this.temperatureC,
     required this.weatherCode,
     required this.windKmh,
     required this.maxRainChance,
+    this.days = const [],
   });
 
   /// The spraying verdict.
@@ -59,7 +83,8 @@ class WeatherService {
       '?latitude=${district.lat}&longitude=${district.lon}'
       '&current=temperature_2m,weather_code,wind_speed_10m'
       '&hourly=precipitation_probability'
-      '&forecast_days=1&timezone=auto',
+      '&daily=weather_code,temperature_2m_max,precipitation_probability_max'
+      '&forecast_days=4&timezone=auto',
     );
 
     try {
@@ -85,10 +110,48 @@ class WeatherService {
         weatherCode: (current['weather_code'] as num).toInt(),
         windKmh: (current['wind_speed_10m'] as num).toDouble(),
         maxRainChance: maxRain,
+        days: _readDays(json['daily'] as Map<String, dynamic>?),
       );
     } catch (_) {
       // Any failure — no internet, timeout, bad response — is simply "offline".
       return null;
     }
+  }
+
+  /// Turns Open-Meteo's daily block into a list of days.
+  ///
+  /// It arrives as parallel lists — dates in one, temperatures in another — so we
+  /// walk them together by index. Anything missing or malformed is skipped rather
+  /// than crashing: a missing forecast should cost the farmer a row on screen,
+  /// not the whole dashboard.
+  static List<DayForecast> _readDays(Map<String, dynamic>? daily) {
+    if (daily == null) return const [];
+    final times = daily['time'] as List?;
+    final maxes = daily['temperature_2m_max'] as List?;
+    final rains = daily['precipitation_probability_max'] as List?;
+    final codes = daily['weather_code'] as List?;
+    if (times == null || maxes == null) return const [];
+
+    final out = <DayForecast>[];
+    for (var i = 0; i < times.length && i < 4; i++) {
+      final date = DateTime.tryParse(times[i].toString());
+      final max = (maxes.length > i ? maxes[i] as num? : null)?.toDouble();
+      if (date == null || max == null) continue;
+      out.add(
+        DayForecast(
+          date: date,
+          maxTempC: max,
+          rainChance:
+              (rains != null && rains.length > i ? rains[i] as num? : null)
+                  ?.toInt() ??
+              0,
+          weatherCode:
+              (codes != null && codes.length > i ? codes[i] as num? : null)
+                  ?.toInt() ??
+              0,
+        ),
+      );
+    }
+    return out;
   }
 }

@@ -125,6 +125,35 @@ class S {
     'hi': 'इंटरनेट नहीं है. नीचे दी गई जानकारी पढ़ सकते हैं.',
   }, lang);
 
+  // ---------------- Forecast ----------------
+
+  static String todayLabel(String lang) =>
+      _pick({'en': 'TODAY', 'mr': 'आज', 'hi': 'आज'}, lang);
+
+  /// Short weekday name. [weekday] is Dart's DateTime.weekday: 1 = Monday.
+  static String weekdayShort(String lang, int weekday) {
+    const en = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const mr = ['सोम', 'मंगळ', 'बुध', 'गुरु', 'शुक्र', 'शनि', 'रवि'];
+    const hi = ['सोम', 'मंगल', 'बुध', 'गुरु', 'शुक्र', 'शनि', 'रवि'];
+    final i = (weekday - 1).clamp(0, 6);
+    switch (lang) {
+      case 'mr':
+        return mr[i];
+      case 'hi':
+        return hi[i];
+      default:
+        return en[i];
+    }
+  }
+
+  // ---------------- This week on your farm ----------------
+
+  static String thisWeek(String lang) => _pick({
+    'en': 'This week on your farm',
+    'mr': 'या आठवड्यात तुमच्या शेतात',
+    'hi': 'इस हफ़्ते आपके खेत में',
+  }, lang);
+
   // ---------------- Sections ----------------
 
   static String problemsInYourArea(String lang) => _pick({
