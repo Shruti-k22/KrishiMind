@@ -36,6 +36,11 @@ flutter:
   # Our brand artwork. Everything inside this folder is bundled into the app.
   assets:
     - assets/branding/
+    # Crop pictures, one per crop, named after the crop in lowercase English:
+    # sugarcane.png, grapes.png, pomegranate.png ...
+    # Any crop without a picture here falls back to a drawn illustration, so the
+    # app never breaks because a file is missing.
+    - assets/crops/
 
   # Devanagari font, bundled so Marathi and Hindi text renders correctly
   # even with no internet. Noto Sans Devanagari is under the SIL Open Font

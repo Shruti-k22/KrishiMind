@@ -25,7 +25,8 @@ enum CropKind {
   mango,
   grain, // wheat, jowar, bajra, rice
   banana,
-  tree, // cashew, coconut
+  tree, // cashew, coconut, jackfruit, betel nut
+  turmeric,
 }
 
 /// Maps an English crop name to a drawing. Anything unrecognised falls back to
@@ -47,6 +48,8 @@ CropKind cropKindFor(String englishName) {
     case 'onion':
       return CropKind.onion;
     case 'orange':
+    case 'mosambi':
+    case 'sweet lime':
       return CropKind.citrus;
     case 'mango':
       return CropKind.mango;
@@ -54,7 +57,11 @@ CropKind cropKindFor(String englishName) {
       return CropKind.banana;
     case 'cashew':
     case 'coconut':
+    case 'jackfruit':
+    case 'betel nut':
       return CropKind.tree;
+    case 'turmeric':
+      return CropKind.turmeric;
     default:
       return CropKind.grain;
   }
@@ -77,12 +84,65 @@ List<Color> cropTint(CropKind kind) {
       return const [Color(0xFFFBEEF3), Color(0xFFF4DFE8)];
     case CropKind.banana:
       return const [Color(0xFFFCF8E3), Color(0xFFF6F0CC)];
+    case CropKind.turmeric:
+      return const [Color(0xFFFFF3E0), Color(0xFFFBE6C8)];
     default:
       return const [Color(0xFFEAF6EA), Color(0xFFDCEEDD)];
   }
 }
 
-/// The artwork on its organic blob background.
+/// A real photograph filling the whole tile, or — if there is no photograph for
+/// this crop yet — the drawn illustration on its tinted background.
+///
+/// Photographs win when they exist. They fill the tile edge to edge with no
+/// padding and no tint, which is what makes the row look like a real product
+/// rather than a set of icons. The drawing is the safety net, so pictures can be
+/// added one crop at a time and a missing file can never break the screen.
+class CropThumb extends StatelessWidget {
+  final CropKind kind;
+
+  /// The crop's English name, lowercased, spaces to underscores — `sugarcane`,
+  /// `betel_nut`. The picture is looked for at `assets/crops/<key>.jpg`.
+  final String assetKey;
+
+  final double height;
+
+  const CropThumb({
+    super.key,
+    required this.kind,
+    required this.assetKey,
+    required this.height,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Image.asset(
+      'assets/crops/$assetKey.jpg',
+      height: height,
+      width: double.infinity,
+      // cover, not contain: the photo fills the tile and is cropped, rather than
+      // sitting in the middle with bars around it.
+      fit: BoxFit.cover,
+      // No photograph for this crop yet. errorBuilder is what turns a missing
+      // asset from a crash into a graceful substitute.
+      errorBuilder: (context, error, stack) => Container(
+        height: height,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: cropTint(kind),
+          ),
+        ),
+        child: Center(child: CropArt(kind: kind, height: height - 6)),
+      ),
+    );
+  }
+}
+
+/// The drawn illustration on its organic blob background. Used only where no
+/// photograph exists.
 class CropArt extends StatelessWidget {
   final CropKind kind;
   final double height;
@@ -96,12 +156,9 @@ class CropArt extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // An irregular soft shape behind the drawing. A plain circle reads as
+          // An irregular soft shape behind the artwork. A plain circle reads as
           // an icon badge; an uneven blob reads as illustration.
-          CustomPaint(
-            size: Size(66, height),
-            painter: _BlobPainter(),
-          ),
+          CustomPaint(size: Size(66, height), painter: _BlobPainter()),
           CustomPaint(size: Size(62, height - 6), painter: _CropPainter(kind)),
         ],
       ),
@@ -159,6 +216,8 @@ class _CropPainter extends CustomPainter {
         _banana(canvas, size);
       case CropKind.tree:
         _tree(canvas, size);
+      case CropKind.turmeric:
+        _turmeric(canvas, size);
     }
   }
 
@@ -552,6 +611,38 @@ class _CropPainter extends CustomPainter {
     _leaf(canvas, Offset(w * 0.5, h * 0.44), Offset(w * 0.16, h * 0.06), light, 7);
     _leaf(canvas, Offset(w * 0.5, h * 0.44), Offset(w * 0.84, h * 0.06), light, -7);
     _leaf(canvas, Offset(w * 0.5, h * 0.44), Offset(w * 0.5, h * 0.00), light, 6);
+  }
+
+  /// Broad upright leaves above ground, orange rhizomes below it — which is the
+  /// part the farmer actually sells.
+  void _turmeric(Canvas canvas, Size s) {
+    final w = s.width, h = s.height;
+    const dark = Color(0xFF2F7A22);
+    const light = Color(0xFF5FA23C);
+
+    _leaf(canvas, Offset(w * 0.5, h * 0.68), Offset(w * 0.14, h * 0.06), dark, 11);
+    _leaf(canvas, Offset(w * 0.5, h * 0.68), Offset(w * 0.86, h * 0.06), dark, -11);
+    _leaf(canvas, Offset(w * 0.5, h * 0.68), Offset(w * 0.40, h * -0.04), light, 8);
+    _leaf(canvas, Offset(w * 0.5, h * 0.68), Offset(w * 0.66, h * -0.02), light, -8);
+
+    void rhizome(double cx, double cy, double angle) {
+      canvas.save();
+      canvas.translate(cx, cy);
+      canvas.rotate(angle);
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset.zero,
+          width: w * 0.30,
+          height: h * 0.15,
+        ),
+        _fill(const Color(0xFFE08A1E)),
+      );
+      canvas.restore();
+    }
+
+    rhizome(w * 0.36, h * 0.84, -0.28);
+    rhizome(w * 0.64, h * 0.90, 0.24);
+    rhizome(w * 0.52, h * 0.76, 0.10);
   }
 
   @override

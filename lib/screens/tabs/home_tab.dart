@@ -198,10 +198,10 @@ class _HomeTabState extends State<HomeTab> {
             // ---- Crops of this region ----
             Padding(
               padding: _side,
-              child: _SectionHead(
-                title: S.problemsInYourArea(_lang),
-                action: S.seeAll(_lang),
-              ),
+              // No "See all" here. It led nowhere, and a control that does
+              // nothing when tapped teaches the farmer not to trust the other
+              // ones either. It comes back when the Guide tab exists.
+              child: _SectionHead(title: S.problemsInYourArea(_lang)),
             ),
             const SizedBox(height: 9),
             _CropRow(lang: _lang, district: widget.district),
@@ -339,6 +339,12 @@ class _CropRow extends StatelessWidget {
 
   const _CropRow({required this.lang, required this.district});
 
+  /// Eight crops per region rather than four or five.
+  ///
+  /// Two reasons. The row now clearly runs past the edge of the screen, so it is
+  /// obvious there is more to see by swiping — with four cards it just looked
+  /// like a short list. And these are genuinely the crops of each region, so the
+  /// farmer should recognise his own.
   static const Map<String, List<List<String>>> _cropsByRegion = {
     // region : [ [english, marathi], ... ]
     'Western Maharashtra': [
@@ -347,12 +353,19 @@ class _CropRow extends StatelessWidget {
       ['Pomegranate', 'डाळिंब'],
       ['Soybean', 'सोयाबीन'],
       ['Jowar', 'ज्वारी'],
+      ['Onion', 'कांदा'],
+      ['Gram', 'हरभरा'],
+      ['Wheat', 'गहू'],
     ],
     'North Maharashtra': [
       ['Onion', 'कांदा'],
       ['Banana', 'केळी'],
       ['Cotton', 'कापूस'],
       ['Grapes', 'द्राक्ष'],
+      ['Pomegranate', 'डाळिंब'],
+      ['Sugarcane', 'ऊस'],
+      ['Wheat', 'गहू'],
+      ['Jowar', 'ज्वारी'],
     ],
     'Marathwada': [
       ['Cotton', 'कापूस'],
@@ -360,6 +373,9 @@ class _CropRow extends StatelessWidget {
       ['Jowar', 'ज्वारी'],
       ['Sugarcane', 'ऊस'],
       ['Bajra', 'बाजरी'],
+      ['Soybean', 'सोयाबीन'],
+      ['Mosambi', 'मोसंबी'],
+      ['Gram', 'हरभरा'],
     ],
     'Vidarbha': [
       ['Cotton', 'कापूस'],
@@ -367,12 +383,19 @@ class _CropRow extends StatelessWidget {
       ['Orange', 'संत्रा'],
       ['Tur', 'तूर'],
       ['Wheat', 'गहू'],
+      ['Gram', 'हरभरा'],
+      ['Rice', 'भात'],
+      ['Jowar', 'ज्वारी'],
     ],
     'Konkan': [
       ['Rice', 'भात'],
       ['Mango', 'आंबा'],
       ['Cashew', 'काजू'],
       ['Coconut', 'नारळ'],
+      ['Banana', 'केळी'],
+      ['Jackfruit', 'फणस'],
+      ['Betel nut', 'सुपारी'],
+      ['Turmeric', 'हळद'],
     ],
   };
 
@@ -382,7 +405,7 @@ class _CropRow extends StatelessWidget {
     final crops = _cropsByRegion[region] ?? const [];
 
     return SizedBox(
-      height: 90,
+      height: 96,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         // Padding on the list, not the tiles, so the first card lines up with
@@ -407,17 +430,12 @@ class _CropRow extends StatelessWidget {
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(15),
                   ),
-                  child: Container(
-                    height: 57,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: cropTint(kind),
-                      ),
-                    ),
-                    child: Center(child: CropArt(kind: kind, height: 52)),
+                  // Looks for assets/crops/sugarcane.jpg and so on, and falls
+                  // back to the drawn illustration where there is no photo yet.
+                  child: CropThumb(
+                    kind: kind,
+                    assetKey: crops[i][0].toLowerCase().replaceAll(' ', '_'),
+                    height: 62,
                   ),
                 ),
                 Expanded(
